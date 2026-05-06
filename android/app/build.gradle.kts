@@ -1,14 +1,14 @@
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.hilt)
+    alias(libs.plugins.ksp)
 }
 
 android {
     namespace = "com.smartfinance.app"
-    compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
-    }
+    compileSdk  = 36
+
 
     defaultConfig {
         applicationId = "com.smartfinance.app"
@@ -33,6 +33,9 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+    kotlinOptions {
+        jvmTarget = "11"
+    }
 }
 
 dependencies {
@@ -42,4 +45,34 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+
+    // Navigation
+    implementation(libs.androidx.navigation.compose)
+
+	// Retrofit (API calls)
+    implementation(libs.retrofit)
+    implementation(libs.converter.gson)
+    implementation(libs.logging.interceptor)
+
+	// Room (local database — offline-first)
+    implementation(libs.room.runtime)
+    implementation(libs.room.ktx)
+    ksp(libs.room.compiler)
+
+	// Hilt (dependency injection)
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.android.compiler)
+    implementation(libs.androidx.hilt.navigation.compose)
+
+	// DataStore (token storage)
+    implementation(libs.androidx.datastore.preferences)
+
+	// Coroutines
+    implementation(libs.kotlinx.coroutines.android)
+
+	// Charts (for dashboard)
+    implementation(libs.ycharts)
+
+	// Splash screen
+    implementation(libs.androidx.core.splashscreen)
 }

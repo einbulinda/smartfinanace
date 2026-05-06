@@ -1,0 +1,27 @@
+# Node
+node_modules/
+dist/
+.env
+
+# Android
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+*.apk
+*.aab
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code
+.claude/
+
+# Gradle generated
+android/gradle/gradle-daemon-jvm.properties
