@@ -73,6 +73,7 @@ dependencies {
 	// WorkManager (background sync)
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
 
 	// DataStore (token storage)
     implementation(libs.androidx.datastore.preferences)
