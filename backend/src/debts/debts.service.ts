@@ -68,6 +68,13 @@ export class DebtsService {
     return this.repo.save(debt);
   }
 
+  async getUpcomingPayments(userId: string): Promise<Debt[]> {
+    const today = new Date().getDate();
+    const next7 = Array.from({ length: 7 }, (_, i) => ((today + i - 1) % 31) + 1);
+    const debts = await this.repo.find({ where: { userId, isPaidOff: false } });
+    return debts.filter((d) => d.dueDate !== null && next7.includes(d.dueDate));
+  }
+
   async getTotalDebt(userId: string): Promise<number> {
     const result = await this.repo
       .createQueryBuilder('d')

@@ -55,6 +55,21 @@ export class TransactionsService {
     await this.repo.remove(t);
   }
 
+  async getAllTimeTotals(userId: string): Promise<{ totalIncome: number; totalExpenses: number }> {
+    const rows = await this.repo
+      .createQueryBuilder('t')
+      .select('t.type', 'type')
+      .addSelect('COALESCE(SUM(t.amount), 0)', 'total')
+      .where('t.userId = :userId', { userId })
+      .groupBy('t.type')
+      .getRawMany<{ type: string; total: string }>();
+
+    return {
+      totalIncome: parseFloat(rows.find((r) => r.type === TransactionType.INCOME)?.total ?? '0'),
+      totalExpenses: parseFloat(rows.find((r) => r.type === TransactionType.EXPENSE)?.total ?? '0'),
+    };
+  }
+
   async getSummary(userId: string, month: number, year: number) {
     const rows = await this.repo
       .createQueryBuilder('t')

@@ -1,0 +1,10 @@
+{
+  "name": "smartfinance",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "api": "npm run start:dev --prefix backend",
+    "api:prod": "npm run start:prod --prefix backend",
+    "api:build": "npm run build --prefix backend"
+  }
+}
