@@ -19,7 +19,9 @@ retrofit = "3.0.0"
 room = "2.6.1"
 ycharts = "2.1.0"
 hilt = "2.48"
+hiltWork = "1.2.0"
 ksp = "1.9.24-1.0.20"
+workManager = "2.9.1"
 
 
 
@@ -51,6 +53,8 @@ androidx-compose-ui-graphics = { group = "androidx.compose.ui", name = "ui-graph
 androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
 androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
+androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "workManager" }
+hilt-work = { module = "androidx.hilt:hilt-work", version.ref = "hiltWork" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

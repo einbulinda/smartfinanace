@@ -70,6 +70,10 @@ dependencies {
     ksp(libs.hilt.android.compiler)
     implementation(libs.androidx.hilt.navigation.compose)
 
+	// WorkManager (background sync)
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.hilt.work)
+
 	// DataStore (token storage)
     implementation(libs.androidx.datastore.preferences)
 
