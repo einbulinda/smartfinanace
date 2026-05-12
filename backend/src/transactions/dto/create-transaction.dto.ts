@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  IsArray,
   IsBoolean,
   IsDateString,
   IsEnum,
@@ -25,6 +26,11 @@ export class CreateTransactionDto {
   @IsString()
   category: string;
 
+  @ApiPropertyOptional({ example: 'Employment' })
+  @IsOptional()
+  @IsString()
+  subCategory?: string;
+
   @ApiPropertyOptional({ example: 'Monthly salary' })
   @IsOptional()
   @IsString()
@@ -43,4 +49,20 @@ export class CreateTransactionDto {
   @ValidateIf((o: CreateTransactionDto) => o.isRecurring === true)
   @IsEnum(RecurringFrequency)
   recurringFrequency?: RecurringFrequency;
+
+  @ApiPropertyOptional({ description: 'Account this transaction belongs to' })
+  @IsOptional()
+  @IsString()
+  accountId?: string;
+
+  @ApiPropertyOptional({ type: [String], description: 'Tags for filtering and grouping' })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[];
+
+  @ApiPropertyOptional({ description: 'Project this transaction belongs to' })
+  @IsOptional()
+  @IsString()
+  projectId?: string;
 }

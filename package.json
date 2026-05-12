@@ -3,8 +3,15 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "dev": "concurrently --names api,web --prefix-colors green,cyan \"npm run start:dev --prefix backend\" \"npm run dev --prefix web\"",
+    "build": "npm run build --prefix backend && npm run build --prefix web",
+    "start": "concurrently --names api,web --prefix-colors green,cyan \"npm run start:prod --prefix backend\" \"npm run start --prefix web\"",
     "api": "npm run start:dev --prefix backend",
-    "api:prod": "npm run start:prod --prefix backend",
-    "api:build": "npm run build --prefix backend"
+    "web": "npm run dev --prefix web",
+    "api:build": "npm run build --prefix backend",
+    "install:all": "npm install --prefix backend && npm install --prefix web"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
   }
 }

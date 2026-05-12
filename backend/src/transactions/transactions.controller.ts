@@ -8,9 +8,11 @@ import {
   Post,
   Query,
   Request,
+  Res,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import type { Response } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TransactionsService } from './transactions.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
@@ -49,6 +51,19 @@ export class TransactionsController {
       month ? parseInt(month) : now.getMonth() + 1,
       year ? parseInt(year) : now.getFullYear(),
     );
+  }
+
+  // export must come before :id to avoid route conflict
+  @Get('export')
+  async exportCsv(
+    @Request() req: AuthReq,
+    @Query() query: QueryTransactionDto,
+    @Res() res: Response,
+  ) {
+    const csv = await this.transactionsService.exportCsv(req.user.userId, query);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="transactions.csv"');
+    res.send(csv);
   }
 
   @Get(':id')

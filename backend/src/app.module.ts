@@ -9,6 +9,16 @@ import { TransactionsModule } from './transactions/transactions.module';
 import { DebtsModule } from './debts/debts.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { OptimizerModule } from './optimizer/optimizer.module';
+import { ProjectionModule } from './projection/projection.module';
+import { InvestmentsModule } from './investments/investments.module';
+import { InsuranceModule } from './insurance/insurance.module';
+import { ReceivablesModule } from './receivables/receivables.module';
+import { BudgetsModule } from './budgets/budgets.module';
+import { AccountsModule } from './accounts/accounts.module';
+import { ManualAssetsModule } from './manual-assets/manual-assets.module';
+import { ProjectsModule } from './projects/projects.module';
+import { GoalsModule } from './goals/goals.module';
+import { AiModule } from './ai/ai.module';
 
 @Module({
   imports: [
@@ -33,6 +43,16 @@ import { OptimizerModule } from './optimizer/optimizer.module';
     DebtsModule,
     DashboardModule,
     OptimizerModule,
+    ProjectionModule,
+    InvestmentsModule,
+    InsuranceModule,
+    ReceivablesModule,
+    BudgetsModule,
+    AccountsModule,
+    ManualAssetsModule,
+    ProjectsModule,
+    GoalsModule,
+    AiModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -14,10 +14,28 @@ export enum DebtType {
   CREDIT_CARD = 'CREDIT_CARD',
   PERSONAL = 'PERSONAL',
   MORTGAGE = 'MORTGAGE',
+  MOBILE_LOAN = 'MOBILE_LOAN',
+  DEVICE_FINANCE = 'DEVICE_FINANCE',
+  STUDENT_LOAN = 'STUDENT_LOAN',
+  CHAMA = 'CHAMA',
+  SUPPLIER_CREDIT = 'SUPPLIER_CREDIT',
   OTHER = 'OTHER',
 }
 
-// TypeORM returns decimal columns as strings — transformer ensures they stay numbers
+export enum InterestType {
+  REDUCING_BALANCE = 'REDUCING_BALANCE',
+  FLAT_RATE = 'FLAT_RATE',
+  DAILY_ACCRUAL = 'DAILY_ACCRUAL',
+  NONE = 'NONE',
+}
+
+export enum DeductionMethod {
+  MANUAL = 'MANUAL',
+  SALARY_DEDUCTION = 'SALARY_DEDUCTION',
+  STANDING_ORDER = 'STANDING_ORDER',
+  AUTO_DEBIT = 'AUTO_DEBIT',
+}
+
 const toFloat = {
   to: (v: number) => v,
   from: (v: string) => parseFloat(v ?? '0'),
@@ -42,6 +60,15 @@ export class Debt {
 
   @Column({ type: 'decimal', precision: 5, scale: 2, default: 0, transformer: toFloat })
   interestRate: number;
+
+  @Column({ type: 'enum', enum: InterestType, default: InterestType.REDUCING_BALANCE })
+  interestType: InterestType;
+
+  @Column({ type: 'enum', enum: DeductionMethod, default: DeductionMethod.MANUAL })
+  deductionMethod: DeductionMethod;
+
+  @Column({ type: 'varchar', nullable: true })
+  lenderType: string | null;
 
   @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true, transformer: toFloat })
   minimumPayment: number | null;

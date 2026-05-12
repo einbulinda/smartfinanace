@@ -10,6 +10,7 @@ import { User } from '../../users/entities/user.entity';
 export enum TransactionType {
   INCOME = 'INCOME',
   EXPENSE = 'EXPENSE',
+  TRANSFER = 'TRANSFER',
 }
 
 export enum RecurringFrequency {
@@ -33,6 +34,9 @@ export class Transaction {
   @Column()
   category: string;
 
+  @Column({ type: 'varchar', nullable: true })
+  subCategory: string | null;
+
   @Column({ nullable: true })
   description: string;
 
@@ -44,6 +48,16 @@ export class Transaction {
 
   @Column({ type: 'enum', enum: RecurringFrequency, nullable: true })
   recurringFrequency: RecurringFrequency | null;
+
+  // Optional link to the account this transaction belongs to
+  @Column({ type: 'varchar', nullable: true })
+  accountId: string | null;
+
+  @Column({ type: 'text', array: true, default: '{}' })
+  tags: string[];
+
+  @Column({ type: 'varchar', nullable: true })
+  projectId: string | null;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   user: User;

@@ -14,12 +14,12 @@ export class TransactionsService {
   ) {}
 
   async create(userId: string, dto: CreateTransactionDto): Promise<Transaction> {
-    const t = this.repo.create({ ...dto, userId });
+    const t = this.repo.create({ ...dto, userId, tags: dto.tags ?? [] });
     return this.repo.save(t);
   }
 
   async findAll(userId: string, query: QueryTransactionDto) {
-    const { type, category, startDate, endDate, page = 1, limit = 20 } = query;
+    const { type, category, subCategory, tag, projectId, startDate, endDate, page = 1, limit = 20 } = query;
 
     const qb = this.repo
       .createQueryBuilder('t')
@@ -31,8 +31,11 @@ export class TransactionsService {
 
     if (type) qb.andWhere('t.type = :type', { type });
     if (category) qb.andWhere('t.category = :category', { category });
+    if (subCategory) qb.andWhere('t.subCategory = :subCategory', { subCategory });
     if (startDate) qb.andWhere('t.date >= :startDate', { startDate });
     if (endDate) qb.andWhere('t.date <= :endDate', { endDate });
+    if (tag) qb.andWhere(':tag = ANY(t.tags)', { tag });
+    if (projectId) qb.andWhere('t.projectId = :projectId', { projectId });
 
     const [data, total] = await qb.getManyAndCount();
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
@@ -61,6 +64,7 @@ export class TransactionsService {
       .select('t.type', 'type')
       .addSelect('COALESCE(SUM(t.amount), 0)', 'total')
       .where('t.userId = :userId', { userId })
+      .andWhere('t.type != :transfer', { transfer: TransactionType.TRANSFER })
       .groupBy('t.type')
       .getRawMany<{ type: string; total: string }>();
 
@@ -77,6 +81,7 @@ export class TransactionsService {
       .addSelect('t.category', 'category')
       .addSelect('SUM(t.amount)', 'total')
       .where('t.userId = :userId', { userId })
+      .andWhere('t.type != :transfer', { transfer: TransactionType.TRANSFER })
       .andWhere('EXTRACT(MONTH FROM t.date::date) = :month', { month })
       .andWhere('EXTRACT(YEAR FROM t.date::date) = :year', { year })
       .groupBy('t.type')
@@ -103,5 +108,44 @@ export class TransactionsService {
         total: parseFloat(r.total),
       })),
     };
+  }
+
+  async exportCsv(userId: string, query: Omit<QueryTransactionDto, 'page' | 'limit'>): Promise<string> {
+    const { type, category, subCategory, tag, projectId, startDate, endDate } = query;
+
+    const qb = this.repo
+      .createQueryBuilder('t')
+      .where('t.userId = :userId', { userId })
+      .orderBy('t.date', 'DESC');
+
+    if (type) qb.andWhere('t.type = :type', { type });
+    if (category) qb.andWhere('t.category = :category', { category });
+    if (subCategory) qb.andWhere('t.subCategory = :subCategory', { subCategory });
+    if (startDate) qb.andWhere('t.date >= :startDate', { startDate });
+    if (endDate) qb.andWhere('t.date <= :endDate', { endDate });
+    if (tag) qb.andWhere(':tag = ANY(t.tags)', { tag });
+    if (projectId) qb.andWhere('t.projectId = :projectId', { projectId });
+
+    const transactions = await qb.getMany();
+
+    const escape = (s: string | null | undefined) =>
+      s ? `"${s.replace(/"/g, '""')}"` : '';
+
+    const header = 'Date,Type,Category,Sub-category,Amount,Description,Account ID,Tags,Project ID';
+    const rows = transactions.map((t) =>
+      [
+        t.date,
+        t.type,
+        escape(t.category),
+        escape(t.subCategory),
+        t.amount,
+        escape(t.description),
+        t.accountId ?? '',
+        t.tags?.length ? `"${t.tags.join(';')}"` : '',
+        t.projectId ?? '',
+      ].join(','),
+    );
+
+    return [header, ...rows].join('\n');
   }
 }

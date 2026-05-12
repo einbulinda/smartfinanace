@@ -10,7 +10,7 @@ import {
   Max,
   Min,
 } from 'class-validator';
-import { DebtType } from '../entities/debt.entity';
+import { DebtType, InterestType, DeductionMethod } from '../entities/debt.entity';
 
 export class CreateDebtDto {
   @ApiProperty({ example: 'KCB Personal Loan' })
@@ -37,6 +37,21 @@ export class CreateDebtDto {
   @IsNumber()
   @Min(0)
   interestRate?: number;
+
+  @ApiPropertyOptional({ enum: InterestType, description: 'How interest is calculated' })
+  @IsOptional()
+  @IsEnum(InterestType)
+  interestType?: InterestType;
+
+  @ApiPropertyOptional({ enum: DeductionMethod, description: 'How payments are collected' })
+  @IsOptional()
+  @IsEnum(DeductionMethod)
+  deductionMethod?: DeductionMethod;
+
+  @ApiPropertyOptional({ example: 'KCB Bank', description: 'Free-text lender type or name' })
+  @IsOptional()
+  @IsString()
+  lenderType?: string;
 
   @ApiPropertyOptional({ example: 15000 })
   @IsOptional()

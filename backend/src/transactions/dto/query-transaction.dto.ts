@@ -21,6 +21,21 @@ export class QueryTransactionDto {
   @IsString()
   category?: string;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  subCategory?: string;
+
+  @ApiPropertyOptional({ example: 'school' })
+  @IsOptional()
+  @IsString()
+  tag?: string;
+
+  @ApiPropertyOptional({ description: 'Filter by project ID' })
+  @IsOptional()
+  @IsString()
+  projectId?: string;
+
   @ApiPropertyOptional({ example: '2026-05-01' })
   @IsOptional()
   @IsDateString()

@@ -1,12 +1,15 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { DebtsService } from '../debts/debts.service';
+import { InterestType, DeductionMethod } from '../debts/entities/debt.entity';
 import { OptimizationStrategy } from './dto/optimize-request.dto';
 
 interface DebtState {
   id: string;
   name: string;
   balance: number;
+  originalAmount: number;
   annualRate: number;
+  interestType: InterestType;
   minimumPayment: number;
 }
 
@@ -49,6 +52,22 @@ export class OptimizerService {
     return Math.round(n * 100) / 100;
   }
 
+  private monthlyInterest(d: DebtState): number {
+    switch (d.interestType) {
+      case InterestType.FLAT_RATE:
+        // Interest charged on the original principal throughout the loan
+        return this.r(d.originalAmount * (d.annualRate / 100 / 12));
+      case InterestType.DAILY_ACCRUAL:
+        // Approximate: daily rate × 30 days
+        return this.r(d.balance * (d.annualRate / 100 / 365) * 30);
+      case InterestType.NONE:
+        return 0;
+      default:
+        // REDUCING_BALANCE: interest on current outstanding balance
+        return this.r(d.balance * (d.annualRate / 100 / 12));
+    }
+  }
+
   private runSimulation(
     debts: DebtState[],
     monthlyBudget: number,
@@ -77,10 +96,10 @@ export class OptimizerService {
         paymentMap[d.id] = 0;
       }
 
-      // Step 1: accrue interest on each active debt
+      // Step 1: accrue interest on each active debt using its specific interest type
       for (const d of state) {
         if (d.balance <= 0.005) { interestMap[d.id] = 0; continue; }
-        const interest = this.r(d.balance * (d.annualRate / 100 / 12));
+        const interest = this.monthlyInterest(d);
         interestMap[d.id] = interest;
         d.balance = this.r(d.balance + interest);
         totalInterestPaid = this.r(totalInterestPaid + interest);
@@ -138,11 +157,15 @@ export class OptimizerService {
   private toDebtStates(debts: Awaited<ReturnType<DebtsService['findAll']>>): DebtState[] {
     return debts
       .filter((d) => !d.isPaidOff && d.currentBalance > 0)
+      // Exclude salary-deduction debts — they are handled automatically and should not be in the optimizer
+      .filter((d) => d.deductionMethod !== DeductionMethod.SALARY_DEDUCTION)
       .map((d) => ({
         id: d.id,
         name: d.name,
         balance: d.currentBalance,
+        originalAmount: d.originalAmount,
         annualRate: d.interestRate,
+        interestType: d.interestType ?? InterestType.REDUCING_BALANCE,
         minimumPayment: d.minimumPayment ?? 0,
       }));
   }
@@ -161,7 +184,6 @@ export class OptimizerService {
 
     const totalMinimums = inputs.reduce((s, d) => s + d.minimumPayment, 0);
 
-    // Baseline: pay only minimums (or budget if no minimums set)
     const baselineBudget = totalMinimums > 0 ? totalMinimums : monthlyBudget;
     const baseline = this.runSimulation(
       inputs.map((d) => ({ ...d })),

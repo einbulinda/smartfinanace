@@ -1,0 +1,21 @@
+{
+  "name": "SmartFinance",
+  "short_name": "SmartFinance",
+  "description": "Smarter choices. Better futures.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#f9fafb",
+  "theme_color": "#15803d",
+  "icons": [
+    {
+      "src": "/SmartFinance/favicon_io/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/SmartFinance/favicon_io/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
