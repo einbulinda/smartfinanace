@@ -128,8 +128,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // moreOpenedAt stores the pathname when "More" was opened — auto-closes on navigation
   const [moreOpenedAt, setMoreOpenedAt] = useState<string | null>(null)
   const showMore = moreOpenedAt === pathname
-  const logoutTimer = useRef<ReturnType<typeof setTimeout>>()
-  const warnTimer   = useRef<ReturnType<typeof setTimeout>>()
+  const logoutTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const warnTimer   = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   // Runs client-side only; server + client both start with ready=false → no hydration mismatch
   useEffect(() => {
