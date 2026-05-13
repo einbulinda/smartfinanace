@@ -10,7 +10,13 @@ async function bootstrap() {
     new ValidationPipe({ whitelist: true, transform: true }),
   );
 
-  app.enableCors();
+  const allowedOrigins = process.env.ALLOWED_ORIGINS
+  app.enableCors({
+    origin: allowedOrigins
+      ? allowedOrigins.split(',').map((s) => s.trim())
+      : true,
+    credentials: true,
+  });
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('SmartFinance API')
