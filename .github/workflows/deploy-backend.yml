@@ -26,6 +26,6 @@ jobs:
             git reset --hard origin/main
             cd backend
             npm ci
-            npm run build
+            NODE_OPTIONS='--max-old-space-size=1536' npm run build
             pm2 reload smartfinance-api || pm2 start dist/main.js --name smartfinance-api
             pm2 save
