@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect } from 'react'
+import { Suspense, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { setAuth } from '@/lib/auth'
 
-export default function AuthCallbackPage() {
+function AuthCallbackHandler() {
   const router = useRouter()
   const params = useSearchParams()
 
@@ -14,7 +14,6 @@ export default function AuthCallbackPage() {
       router.replace('/login?error=oauth_failed')
       return
     }
-    // Decode the JWT payload to extract user info (no verification needed — server already did it)
     try {
       const payload = JSON.parse(atob(token.split('.')[1]))
       setAuth(token, {
@@ -30,9 +29,15 @@ export default function AuthCallbackPage() {
     router.replace('/dashboard')
   }, [params, router])
 
+  return <p className="text-sm text-gray-400">Signing you in…</p>
+}
+
+export default function AuthCallbackPage() {
   return (
     <div className="flex items-center justify-center min-h-screen">
-      <p className="text-sm text-gray-400">Signing you in…</p>
+      <Suspense>
+        <AuthCallbackHandler />
+      </Suspense>
     </div>
   )
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { api } from '@/lib/api'
@@ -9,7 +9,7 @@ import type { AuthResponse } from '@/lib/types'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter()
   const params = useSearchParams()
   const resetSuccess = params.get('reset') === 'success'
@@ -38,10 +38,6 @@ export default function LoginPage() {
     }
   }
 
-  function handleGoogleLogin() {
-    window.location.href = `${API_URL}/auth/google`
-  }
-
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
       <h2 className="text-xl font-semibold text-gray-900 mb-6">Sign in to your account</h2>
@@ -57,10 +53,9 @@ export default function LoginPage() {
         </div>
       )}
 
-      {/* Google OAuth */}
       <button
         type="button"
-        onClick={handleGoogleLogin}
+        onClick={() => { window.location.href = `${API_URL}/auth/google` }}
         className="w-full flex items-center justify-center gap-3 border border-gray-300 rounded-lg px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors mb-5"
       >
         <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -121,5 +116,13 @@ export default function LoginPage() {
         </Link>
       </p>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   )
 }
