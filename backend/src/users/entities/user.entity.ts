@@ -16,8 +16,11 @@ export class User {
   @Column({ unique: true })
   email: string;
 
-  @Column({ select: false })
-  password: string;
+  @Column({ select: false, nullable: true })
+  password: string | null;
+
+  @Column({ nullable: true, unique: true })
+  googleId: string | null;
 
   @Column()
   firstName: string;
@@ -28,6 +31,12 @@ export class User {
   @Column({ default: 'KES' })
   currency: string;
 
+  @Column({ default: 0 })
+  failedLoginAttempts: number;
+
+  @Column({ default: false })
+  isLocked: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 
@@ -36,6 +45,15 @@ export class User {
 
   @BeforeInsert()
   async hashPassword() {
-    this.password = await bcrypt.hash(this.password, 10);
+    if (this.password) {
+      this.password = await bcrypt.hash(this.password, 10);
+    }
+  }
+
+  @BeforeInsert()
+  normalizeEmail() {
+    if (this.email) {
+      this.email = this.email.toLowerCase().trim();
+    }
   }
 }
