@@ -21,7 +21,8 @@ jobs:
           script: |
             set -e
             cd /var/www/smartfinanace
-            git pull origin main
+            git fetch --prune origin
+            git reset --hard origin/main
             cd web
             npm ci
             NODE_OPTIONS='--max-old-space-size=1536' npm run build
