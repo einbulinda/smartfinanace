@@ -1,0 +1,29 @@
+name: Deploy Frontend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'web/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: SSH → build → reload PM2
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to Droplet
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -e
+            cd /var/www/smartfinanace
+            git pull origin main
+            cd web
+            npm ci
+            NODE_OPTIONS='--max-old-space-size=1536' npm run build
+            pm2 reload smartfinance-web || pm2 start npm --name smartfinance-web -- start
+            pm2 save
