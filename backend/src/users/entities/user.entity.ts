@@ -16,10 +16,10 @@ export class User {
   @Column({ unique: true })
   email: string;
 
-  @Column({ select: false, nullable: true })
+  @Column({ type: 'varchar', select: false, nullable: true })
   password: string | null;
 
-  @Column({ nullable: true, unique: true })
+  @Column({ type: 'varchar', nullable: true, unique: true })
   googleId: string | null;
 
   @Column()
