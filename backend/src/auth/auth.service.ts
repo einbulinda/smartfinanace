@@ -155,14 +155,17 @@ export class AuthService {
       };
     }
 
-    // 2. Existing email/password account — link Google without overwriting names
+    // 2. Existing email/password account — link Google; fill in empty names, preserve non-empty
     const existing = await this.usersService.findByEmail(profile.email);
     if (existing) {
       await this.usersService.linkGoogleProfile(
         existing.id,
         profile.googleId,
         profile.avatarUrl,
+        { firstName: profile.firstName, lastName: profile.lastName },
       );
+      if (!existing.firstName) existing.firstName = profile.firstName;
+      if (!existing.lastName) existing.lastName = profile.lastName;
       existing.avatarUrl = profile.avatarUrl;
       return {
         accessToken: this.buildJwt(existing.id, existing.email),

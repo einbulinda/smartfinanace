@@ -57,10 +57,18 @@ export class UsersService {
     userId: string,
     googleId: string,
     avatarUrl: string | null,
+    names?: { firstName: string; lastName: string },
   ): Promise<void> {
+    const nameUpdate: Partial<User> = {};
+    if (names) {
+      const current = await this.usersRepo.findOne({ where: { id: userId } });
+      if (current && !current.firstName) nameUpdate.firstName = names.firstName;
+      if (current && !current.lastName) nameUpdate.lastName = names.lastName;
+    }
     await this.usersRepo.update(userId, {
       googleId,
       ...(avatarUrl ? { avatarUrl } : {}),
+      ...nameUpdate,
     });
   }
 

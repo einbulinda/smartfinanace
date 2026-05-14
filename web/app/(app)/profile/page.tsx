@@ -81,9 +81,13 @@ export default function ProfilePage() {
     }
   }
 
-  const initials = user
-    ? `${user.firstName[0]}${user.lastName[0]}`.toUpperCase()
-    : '?'
+  const initials = (() => {
+    if (!user) return '?'
+    const f = user.firstName?.trim()?.[0] ?? ''
+    const l = user.lastName?.trim()?.[0] ?? ''
+    if (f || l) return `${f}${l}`.toUpperCase()
+    return (user.email?.[0] ?? '?').toUpperCase()
+  })()
 
   const labelCls = 'block text-xs font-medium text-gray-500 mb-1'
   const inputCls =
@@ -98,12 +102,25 @@ export default function ProfilePage() {
 
       {/* Avatar */}
       <div className="flex items-center gap-4">
-        <div className="w-16 h-16 rounded-full bg-green-700 flex items-center justify-center shrink-0">
-          <span className="text-xl font-bold text-white">{initials}</span>
-        </div>
+        {user?.avatarUrl ? (
+          <img
+            src={user.avatarUrl}
+            alt=""
+            referrerPolicy="no-referrer"
+            className="w-16 h-16 rounded-full object-cover shrink-0"
+          />
+        ) : (
+          <div className="w-16 h-16 rounded-full bg-green-700 flex items-center justify-center shrink-0">
+            <span className="text-xl font-bold text-white">{initials}</span>
+          </div>
+        )}
         <div className="min-w-0">
           <p className="text-lg font-semibold text-gray-900 truncate">
-            {user ? `${user.firstName} ${user.lastName}` : '—'}
+            {user
+              ? (user.firstName || user.lastName
+                  ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim()
+                  : user.email)
+              : '—'}
           </p>
           <p className="text-sm text-gray-400 truncate">{user?.email ?? '—'}</p>
         </div>
