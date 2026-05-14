@@ -3,6 +3,8 @@
 import { Suspense, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { setAuth } from '@/lib/auth'
+import { api } from '@/lib/api'
+import type { User } from '@/lib/types'
 
 function AuthCallbackHandler() {
   const router = useRouter()
@@ -14,19 +16,20 @@ function AuthCallbackHandler() {
       router.replace('/login?error=oauth_failed')
       return
     }
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]))
-      setAuth(token, {
-        id: payload.sub as string,
-        email: payload.email as string,
-        firstName: '',
-        lastName: '',
+
+    // Store token first so the interceptor can attach it
+    localStorage.setItem('sf_token', token)
+
+    // Fetch full profile (includes firstName, lastName, avatarUrl)
+    api.get<User>('/auth/profile')
+      .then(({ data }) => {
+        setAuth(token, data)
+        router.replace('/dashboard')
       })
-    } catch {
-      router.replace('/login?error=oauth_failed')
-      return
-    }
-    router.replace('/dashboard')
+      .catch(() => {
+        localStorage.removeItem('sf_token')
+        router.replace('/login?error=oauth_failed')
+      })
   }, [params, router])
 
   return <p className="text-sm text-gray-400">Signing you in…</p>

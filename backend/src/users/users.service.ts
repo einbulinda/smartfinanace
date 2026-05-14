@@ -53,8 +53,19 @@ export class UsersService {
     return this.usersRepo.save(user);
   }
 
-  async updateGoogleId(userId: string, googleId: string): Promise<void> {
-    await this.usersRepo.update(userId, { googleId });
+  async linkGoogleProfile(
+    userId: string,
+    googleId: string,
+    avatarUrl: string | null,
+  ): Promise<void> {
+    await this.usersRepo.update(userId, {
+      googleId,
+      ...(avatarUrl ? { avatarUrl } : {}),
+    });
+  }
+
+  async updateAvatarUrl(userId: string, avatarUrl: string): Promise<void> {
+    await this.usersRepo.update(userId, { avatarUrl });
   }
 
   async setPassword(userId: string, passwordHash: string): Promise<void> {

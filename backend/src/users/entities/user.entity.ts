@@ -22,6 +22,9 @@ export class User {
   @Column({ type: 'varchar', nullable: true, unique: true })
   googleId: string | null;
 
+  @Column({ type: 'varchar', nullable: true })
+  avatarUrl: string | null;
+
   @Column()
   firstName: string;
 

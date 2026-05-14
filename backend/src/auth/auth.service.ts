@@ -33,8 +33,20 @@ export class AuthService {
     return this.jwtService.sign({ sub: userId, email });
   }
 
-  private userPayload(user: { id: string; email: string; firstName: string; lastName: string }) {
-    return { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName };
+  private userPayload(user: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    avatarUrl?: string | null;
+  }) {
+    return {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      avatarUrl: user.avatarUrl ?? null,
+    };
   }
 
   async register(dto: RegisterDto) {
@@ -128,30 +140,47 @@ export class AuthService {
     email: string;
     firstName: string;
     lastName: string;
+    avatarUrl: string | null;
   }) {
-    // Find by Google ID first
+    // 1. Already linked via Google ID — just refresh the avatar
     let user = await this.usersService.findByGoogleId(profile.googleId);
-
-    if (!user) {
-      // Try to find an existing email/password account and link it
-      const existing = await this.usersService.findByEmail(profile.email);
-      if (existing) {
-        await this.usersService.updateGoogleId(existing.id, profile.googleId);
-        user = existing;
-      } else {
-        // Create new account (no password — Google-only)
-        user = await this.usersService.create({
-          email: profile.email,
-          firstName: profile.firstName,
-          lastName: profile.lastName,
-          googleId: profile.googleId,
-        });
+    if (user) {
+      if (profile.avatarUrl) {
+        await this.usersService.updateAvatarUrl(user.id, profile.avatarUrl);
+        user.avatarUrl = profile.avatarUrl;
       }
+      return {
+        accessToken: this.buildJwt(user.id, user.email),
+        user: this.userPayload(user),
+      };
     }
 
+    // 2. Existing email/password account — link Google without overwriting names
+    const existing = await this.usersService.findByEmail(profile.email);
+    if (existing) {
+      await this.usersService.linkGoogleProfile(
+        existing.id,
+        profile.googleId,
+        profile.avatarUrl,
+      );
+      existing.avatarUrl = profile.avatarUrl;
+      return {
+        accessToken: this.buildJwt(existing.id, existing.email),
+        user: this.userPayload(existing),
+      };
+    }
+
+    // 3. Brand-new user — create with full Google profile
+    const newUser = await this.usersService.create({
+      email: profile.email,
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      googleId: profile.googleId,
+      avatarUrl: profile.avatarUrl,
+    });
     return {
-      accessToken: this.buildJwt(user.id, user.email),
-      user: this.userPayload(user),
+      accessToken: this.buildJwt(newUser.id, newUser.email),
+      user: this.userPayload(newUser),
     };
   }
 
@@ -160,6 +189,6 @@ export class AuthService {
     if (existing && existing.id !== userId) {
       throw new ConflictException('This Google account is already linked to another user');
     }
-    await this.usersService.updateGoogleId(userId, googleId);
+    await this.usersService.linkGoogleProfile(userId, googleId, null);
   }
 }

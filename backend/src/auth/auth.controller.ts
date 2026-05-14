@@ -13,6 +13,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
+import { UsersService } from '../users/users.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
@@ -25,6 +26,7 @@ interface GoogleProfile {
   email: string;
   firstName: string;
   lastName: string;
+  avatarUrl: string | null;
 }
 
 @ApiTags('auth')
@@ -32,6 +34,7 @@ interface GoogleProfile {
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
+    private readonly usersService: UsersService,
     private readonly config: ConfigService,
   ) {}
 
@@ -49,8 +52,16 @@ export class AuthController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @Get('profile')
-  profile(@Request() req: { user: { userId: string; email: string } }) {
-    return req.user;
+  async profile(@Request() req: { user: { userId: string; email: string } }) {
+    const user = await this.usersService.findById(req.user.userId);
+    if (!user) return req.user;
+    return {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      avatarUrl: user.avatarUrl ?? null,
+    };
   }
 
   @Post('forgot-password')
