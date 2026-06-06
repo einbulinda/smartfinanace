@@ -63,6 +63,7 @@ export class DebtsService {
       category: 'debt_repayment',
       description: `Payment: ${debt.name}`,
       date: new Date().toISOString().split('T')[0],
+      ...(dto.accountId ? { accountId: dto.accountId } : {}),
     });
 
     return this.repo.save(debt);

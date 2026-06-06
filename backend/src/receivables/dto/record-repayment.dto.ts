@@ -11,4 +11,8 @@ export class RecordRepaymentDto {
   @IsString()
   @IsOptional()
   notes?: string;
+
+  @IsString()
+  @IsOptional()
+  accountId?: string;
 }

@@ -254,6 +254,7 @@ export interface RecordRepaymentRequest {
   amount: number
   date: string
   notes?: string
+  accountId?: string
 }
 
 export interface BudgetItemInput {

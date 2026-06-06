@@ -6,6 +6,8 @@ import { ReceivableRepayment } from './entities/receivable-repayment.entity';
 import { CreateReceivableDto } from './dto/create-receivable.dto';
 import { UpdateReceivableDto } from './dto/update-receivable.dto';
 import { RecordRepaymentDto } from './dto/record-repayment.dto';
+import { TransactionsService } from '../transactions/transactions.service';
+import { TransactionType } from '../transactions/entities/transaction.entity';
 
 @Injectable()
 export class ReceivablesService {
@@ -14,6 +16,7 @@ export class ReceivablesService {
     private readonly repo: Repository<Receivable>,
     @InjectRepository(ReceivableRepayment)
     private readonly repaymentRepo: Repository<ReceivableRepayment>,
+    private readonly transactionsService: TransactionsService,
   ) {}
 
   async create(userId: string, dto: CreateReceivableDto): Promise<Receivable> {
@@ -51,6 +54,18 @@ export class ReceivablesService {
 
     const repayment = this.repaymentRepo.create({ ...dto, receivableId: id });
     await this.repaymentRepo.save(repayment);
+
+    // Credit the chosen account so the balance reflects the incoming cash
+    if (dto.accountId) {
+      await this.transactionsService.create(userId, {
+        type: TransactionType.INCOME,
+        amount: dto.amount,
+        category: 'loan_repayment_received',
+        description: `Repayment from: ${r.borrowerName}`,
+        date: dto.date,
+        accountId: dto.accountId,
+      });
+    }
 
     r.amountRepaid = Math.min(r.amount, r.amountRepaid + dto.amount);
 

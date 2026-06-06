@@ -6,7 +6,7 @@ import { Plus, Trash2, X, Pencil, ChevronDown, ChevronUp } from 'lucide-react'
 import { api } from '@/lib/api'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { ErrorState } from '@/components/ErrorState'
-import type { Receivable, CreateReceivableRequest, RecordRepaymentRequest } from '@/lib/types'
+import type { Account, Receivable, CreateReceivableRequest, RecordRepaymentRequest } from '@/lib/types'
 
 const today = new Date().toISOString().split('T')[0]
 
@@ -54,6 +54,7 @@ export default function ReceivablesPage() {
   const [repaymentAmount, setRepaymentAmount] = useState('')
   const [repaymentDate, setRepaymentDate] = useState(today)
   const [repaymentNotes, setRepaymentNotes] = useState('')
+  const [repaymentAccountId, setRepaymentAccountId] = useState('')
   const [repaymentError, setRepaymentError] = useState('')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [showRepaid, setShowRepaid] = useState(false)
@@ -61,6 +62,11 @@ export default function ReceivablesPage() {
   const { data: receivables = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['receivables'],
     queryFn: () => api.get<Receivable[]>('/receivables').then((r) => r.data),
+  })
+
+  const { data: accounts = [] } = useQuery({
+    queryKey: ['accounts'],
+    queryFn: () => api.get<Account[]>('/accounts').then((r) => r.data),
   })
 
   const invalidate = () => {
@@ -94,7 +100,11 @@ export default function ReceivablesPage() {
   const repaymentMutation = useMutation({
     mutationFn: ({ id, req }: { id: string; req: RecordRepaymentRequest }) =>
       api.post(`/receivables/${id}/repayments`, req).then((r) => r.data),
-    onSuccess: () => { invalidate(); setRepaymentId(null); setRepaymentAmount(''); setRepaymentNotes('') },
+    onSuccess: () => {
+      invalidate()
+      qc.invalidateQueries({ queryKey: ['accounts'] })
+      setRepaymentId(null); setRepaymentAmount(''); setRepaymentNotes(''); setRepaymentAccountId('')
+    },
     onError: () => setRepaymentError('Failed to record repayment.'),
   })
 
@@ -129,7 +139,12 @@ export default function ReceivablesPage() {
     setRepaymentError('')
     repaymentMutation.mutate({
       id: repaymentId,
-      req: { amount: parseFloat(repaymentAmount), date: repaymentDate, notes: repaymentNotes || undefined },
+      req: {
+        amount: parseFloat(repaymentAmount),
+        date: repaymentDate,
+        notes: repaymentNotes || undefined,
+        accountId: repaymentAccountId || undefined,
+      },
     })
   }
 
@@ -160,7 +175,7 @@ export default function ReceivablesPage() {
                 <button onClick={() => handleEdit(r)} className="text-gray-300 hover:text-blue-400 p-1 transition-colors" aria-label="Edit">
                   <Pencil className="w-3.5 h-3.5" />
                 </button>
-                <button onClick={() => { setRepaymentId(r.id); setRepaymentDate(today); setRepaymentAmount(''); setRepaymentNotes(''); setRepaymentError('') }}
+                <button onClick={() => { setRepaymentId(r.id); setRepaymentDate(today); setRepaymentAmount(''); setRepaymentNotes(''); setRepaymentAccountId(''); setRepaymentError('') }}
                   className="text-xs text-green-700 hover:text-green-800 font-medium px-2 py-1 rounded-lg border border-green-200 hover:bg-green-50 transition-colors">
                   Record payment
                 </button>
@@ -343,6 +358,24 @@ export default function ReceivablesPage() {
                   className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-transparent"
                   placeholder="Optional note" />
               </div>
+              {accounts.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Deposit to account (optional)</label>
+                  <select
+                    value={repaymentAccountId}
+                    onChange={(e) => setRepaymentAccountId(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-transparent bg-white"
+                  >
+                    <option value="">— No account (manual tracking) —</option>
+                    {accounts.map((a) => (
+                      <option key={a.id} value={a.id}>{a.name}</option>
+                    ))}
+                  </select>
+                  {repaymentAccountId && (
+                    <p className="text-xs text-gray-400 mt-1">This will credit the received amount to your account balance.</p>
+                  )}
+                </div>
+              )}
               {repaymentError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{repaymentError}</p>}
               <button type="submit" disabled={repaymentMutation.isPending || !repaymentAmount}
                 className="w-full rounded-lg bg-green-700 text-white py-2.5 text-sm font-medium hover:bg-green-800 disabled:opacity-50 transition-colors">

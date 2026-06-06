@@ -6,7 +6,7 @@ import { Plus, Trash2, X, Banknote, Pencil, ChevronDown } from 'lucide-react'
 import { api } from '@/lib/api'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { ErrorState } from '@/components/ErrorState'
-import type { Debt, CreateDebtRequest, InterestType, DeductionMethod } from '@/lib/types'
+import type { Account, Debt, CreateDebtRequest, InterestType, DeductionMethod } from '@/lib/types'
 
 const DEBT_TYPES = [
   'BANK_LOAN', 'SACCO', 'CREDIT_CARD', 'PERSONAL', 'MORTGAGE',
@@ -103,12 +103,18 @@ export default function DebtsPage() {
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   const [paymentDebt, setPaymentDebt] = useState<Debt | null>(null)
   const [paymentAmount, setPaymentAmount] = useState('')
+  const [paymentAccountId, setPaymentAccountId] = useState('')
   const [paymentError, setPaymentError] = useState('')
   const [showPaidOff, setShowPaidOff] = useState(false)
 
   const { data: debts = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['debts'],
     queryFn: () => api.get<Debt[]>('/debts').then((r) => r.data),
+  })
+
+  const { data: accounts = [] } = useQuery({
+    queryKey: ['accounts'],
+    queryFn: () => api.get<Account[]>('/accounts').then((r) => r.data),
   })
 
   const addMutation = useMutation({
@@ -130,11 +136,12 @@ export default function DebtsPage() {
   })
 
   const paymentMutation = useMutation({
-    mutationFn: ({ id, amount }: { id: string; amount: number }) =>
-      api.post<Debt>(`/debts/${id}/payment`, { amount }).then((r) => r.data),
+    mutationFn: ({ id, amount, accountId }: { id: string; amount: number; accountId?: string }) =>
+      api.post<Debt>(`/debts/${id}/payment`, { amount, ...(accountId ? { accountId } : {}) }).then((r) => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['debts'] }); qc.invalidateQueries({ queryKey: ['dashboard'] })
-      setPaymentDebt(null); setPaymentAmount(''); setPaymentError('')
+      qc.invalidateQueries({ queryKey: ['accounts'] })
+      setPaymentDebt(null); setPaymentAmount(''); setPaymentAccountId(''); setPaymentError('')
     },
     onError: () => setPaymentError('Payment failed. Please try again.'),
   })
@@ -178,7 +185,7 @@ export default function DebtsPage() {
     const amount = parseFloat(paymentAmount)
     if (!amount || amount <= 0) return
     setPaymentError('')
-    paymentMutation.mutate({ id: paymentDebt.id, amount })
+    paymentMutation.mutate({ id: paymentDebt.id, amount, accountId: paymentAccountId || undefined })
   }
 
   return (
@@ -249,7 +256,7 @@ export default function DebtsPage() {
                 <div className="flex items-center gap-2 shrink-0">
                   {debt.deductionMethod === 'MANUAL' || debt.deductionMethod === 'STANDING_ORDER' ? (
                     <button
-                      onClick={() => { setPaymentDebt(debt); setPaymentAmount(''); setPaymentError('') }}
+                      onClick={() => { setPaymentDebt(debt); setPaymentAmount(''); setPaymentAccountId(''); setPaymentError('') }}
                       className="flex items-center gap-1.5 bg-green-50 text-green-700 hover:bg-green-100 transition-colors rounded-lg px-3 py-1.5 text-xs font-medium"
                     >
                       <Banknote className="w-3.5 h-3.5" />
@@ -372,6 +379,24 @@ export default function DebtsPage() {
                   autoFocus required
                 />
               </div>
+              {accounts.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Pay from account (optional)</label>
+                  <select
+                    value={paymentAccountId}
+                    onChange={(e) => setPaymentAccountId(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-transparent bg-white"
+                  >
+                    <option value="">— No account (manual tracking) —</option>
+                    {accounts.map((a) => (
+                      <option key={a.id} value={a.id}>{a.name}</option>
+                    ))}
+                  </select>
+                  {paymentAccountId && (
+                    <p className="text-xs text-gray-400 mt-1">This will deduct the payment from your account balance.</p>
+                  )}
+                </div>
+              )}
               {paymentError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{paymentError}</p>}
               <button type="submit" disabled={paymentMutation.isPending || !paymentAmount}
                 className="w-full rounded-lg bg-green-700 text-white py-2.5 text-sm font-medium hover:bg-green-800 disabled:opacity-50 transition-colors">
