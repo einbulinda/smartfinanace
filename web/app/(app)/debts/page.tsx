@@ -2,11 +2,11 @@
 
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2, X, Banknote, Pencil, ChevronDown } from 'lucide-react'
+import { Plus, Trash2, X, Banknote, Pencil, ChevronDown, ChevronUp, History } from 'lucide-react'
 import { api } from '@/lib/api'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { ErrorState } from '@/components/ErrorState'
-import type { Account, Debt, CreateDebtRequest, InterestType, DeductionMethod } from '@/lib/types'
+import type { Account, Debt, DebtPayment, CreateDebtRequest, InterestType, DeductionMethod } from '@/lib/types'
 
 const DEBT_TYPES = [
   'BANK_LOAN', 'SACCO', 'CREDIT_CARD', 'PERSONAL', 'MORTGAGE',
@@ -126,6 +126,7 @@ export default function DebtsPage() {
   const [extraAmount, setExtraAmount] = useState('')
   const [extraError, setExtraError] = useState('')
   const [showPaidOff, setShowPaidOff] = useState(false)
+  const [historyDebtId, setHistoryDebtId] = useState<string | null>(null)
 
   const { data: debts = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['debts'],
@@ -135,6 +136,12 @@ export default function DebtsPage() {
   const { data: accounts = [] } = useQuery({
     queryKey: ['accounts'],
     queryFn: () => api.get<Account[]>('/accounts').then((r) => r.data),
+  })
+
+  const { data: debtHistory = [] } = useQuery({
+    queryKey: ['debt-payments', historyDebtId],
+    queryFn: () => api.get<DebtPayment[]>(`/debts/${historyDebtId}/payments`).then((r) => r.data),
+    enabled: !!historyDebtId,
   })
 
   const addMutation = useMutation({
@@ -168,14 +175,20 @@ export default function DebtsPage() {
 
   const confirmDeductionMutation = useMutation({
     mutationFn: (id: string) => api.post<Debt>(`/debts/${id}/confirm-deduction`).then((r) => r.data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['debts'] }); qc.invalidateQueries({ queryKey: ['dashboard'] }) },
+    onSuccess: (_, id) => {
+      qc.invalidateQueries({ queryKey: ['debts'] })
+      qc.invalidateQueries({ queryKey: ['dashboard'] })
+      qc.invalidateQueries({ queryKey: ['debt-payments', id] })
+    },
   })
 
   const extraPaymentMutation = useMutation({
     mutationFn: ({ id, amount }: { id: string; amount: number }) =>
-      api.post<Debt>(`/debts/${id}/payment`, { amount }).then((r) => r.data),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['debts'] }); qc.invalidateQueries({ queryKey: ['dashboard'] })
+      api.post<Debt>(`/debts/${id}/payment`, { amount, paymentType: 'EXTRA' }).then((r) => r.data),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: ['debts'] })
+      qc.invalidateQueries({ queryKey: ['dashboard'] })
+      qc.invalidateQueries({ queryKey: ['debt-payments', id] })
       setExtraPaymentDebt(null); setExtraAmount(''); setExtraError('')
     },
     onError: () => setExtraError('Extra payment failed. Please try again.'),
@@ -343,6 +356,43 @@ export default function DebtsPage() {
                     <Plus className="w-3.5 h-3.5" />
                     Extra payment
                   </button>
+                  <button
+                    onClick={() => setHistoryDebtId(historyDebtId === debt.id ? null : debt.id)}
+                    className="flex items-center gap-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded-lg px-2 py-1.5 text-xs font-medium ml-auto"
+                  >
+                    <History className="w-3.5 h-3.5" />
+                    History
+                    {historyDebtId === debt.id ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  </button>
+                </div>
+              )}
+
+              {/* Payment history panel */}
+              {historyDebtId === debt.id && (
+                <div className="mt-3 border-t border-gray-50 pt-3">
+                  {debtHistory.length === 0 ? (
+                    <p className="text-xs text-gray-400 text-center py-2">No payments recorded yet</p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {debtHistory.map((p) => (
+                        <div key={p.id} className="flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-500">{p.date}</span>
+                            <span className={`px-1.5 py-0.5 rounded-full font-medium ${
+                              p.type === 'SALARY_DEDUCTION' || p.type === 'AUTO_DEBIT'
+                                ? 'bg-blue-50 text-blue-600'
+                                : p.type === 'EXTRA'
+                                ? 'bg-green-50 text-green-700'
+                                : 'bg-gray-100 text-gray-500'
+                            }`}>
+                              {p.type === 'SALARY_DEDUCTION' ? 'Salary' : p.type === 'AUTO_DEBIT' ? 'Auto-debit' : p.type === 'EXTRA' ? 'Extra' : 'Manual'}
+                            </span>
+                          </div>
+                          <span className="font-medium text-gray-700">{kes(p.amount)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 

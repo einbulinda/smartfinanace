@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNumber, IsOptional, IsPositive, IsString } from 'class-validator';
+import { IsEnum, IsNumber, IsOptional, IsPositive, IsString } from 'class-validator';
+import { DebtPaymentType } from '../entities/debt-payment.entity';
 
 export class MakePaymentDto {
   @ApiProperty({ example: 15000 })
@@ -11,4 +12,9 @@ export class MakePaymentDto {
   @IsOptional()
   @IsString()
   accountId?: string;
+
+  @ApiPropertyOptional({ enum: DebtPaymentType })
+  @IsOptional()
+  @IsEnum(DebtPaymentType)
+  paymentType?: DebtPaymentType;
 }

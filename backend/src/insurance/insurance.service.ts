@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Insurance, PremiumFrequency } from './entities/insurance.entity';
+import { InsurancePayment } from './entities/insurance-payment.entity';
 import { CreateInsuranceDto } from './dto/create-insurance.dto';
 import { UpdateInsuranceDto } from './dto/update-insurance.dto';
 import { TransactionsService } from '../transactions/transactions.service';
@@ -12,6 +13,8 @@ export class InsuranceService {
   constructor(
     @InjectRepository(Insurance)
     private readonly repo: Repository<Insurance>,
+    @InjectRepository(InsurancePayment)
+    private readonly paymentRepo: Repository<InsurancePayment>,
     private readonly transactionsService: TransactionsService,
   ) {}
 
@@ -56,6 +59,8 @@ export class InsuranceService {
       date: today,
     });
 
+    await this.paymentRepo.save({ policyId: id, userId, amount: policy.premiumAmount, date: today });
+
     // Advance nextPaymentDate by the frequency period
     if (policy.nextPaymentDate) {
       const next = new Date(policy.nextPaymentDate);
@@ -66,6 +71,14 @@ export class InsuranceService {
     }
 
     return this.repo.save(policy);
+  }
+
+  async getPayments(userId: string, policyId: string): Promise<InsurancePayment[]> {
+    await this.findOne(userId, policyId); // ownership check
+    return this.paymentRepo.find({
+      where: { policyId },
+      order: { date: 'DESC', createdAt: 'DESC' },
+    });
   }
 
   async getMonthlyPremiumTotal(userId: string): Promise<number> {

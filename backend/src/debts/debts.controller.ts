@@ -55,6 +55,11 @@ export class DebtsController {
     return this.debtsService.confirmDeduction(req.user.userId, id);
   }
 
+  @Get(':id/payments')
+  getPayments(@Request() req: AuthReq, @Param('id') id: string) {
+    return this.debtsService.getPayments(req.user.userId, id);
+  }
+
   @Delete(':id')
   remove(@Request() req: AuthReq, @Param('id') id: string) {
     return this.debtsService.remove(req.user.userId, id);

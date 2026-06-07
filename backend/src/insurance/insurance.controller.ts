@@ -36,6 +36,11 @@ export class InsuranceController {
     return this.insuranceService.confirmDeduction(req.user.userId, id);
   }
 
+  @Get(':id/payments')
+  getPayments(@Request() req: AuthReq, @Param('id') id: string) {
+    return this.insuranceService.getPayments(req.user.userId, id);
+  }
+
   @Delete(':id')
   remove(@Request() req: AuthReq, @Param('id') id: string) {
     return this.insuranceService.remove(req.user.userId, id);

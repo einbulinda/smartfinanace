@@ -2,11 +2,11 @@
 
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2, X, Pencil, CheckCircle } from 'lucide-react'
+import { Plus, Trash2, X, Pencil, CheckCircle, History, ChevronDown, ChevronUp } from 'lucide-react'
 import { api } from '@/lib/api'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { ErrorState } from '@/components/ErrorState'
-import type { InsurancePolicy, CreateInsuranceRequest } from '@/lib/types'
+import type { InsurancePolicy, InsurancePayment, CreateInsuranceRequest } from '@/lib/types'
 
 const INSURANCE_TYPES = ['HEALTH', 'LIFE', 'CAR', 'HOME', 'EDUCATION', 'BUSINESS', 'OTHER']
 const TYPE_LABELS: Record<string, string> = {
@@ -50,6 +50,7 @@ export default function InsurancePage() {
   const [form, setForm] = useState<CreateInsuranceRequest>(EMPTY_FORM)
   const [formError, setFormError] = useState('')
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
+  const [historyPolicyId, setHistoryPolicyId] = useState<string | null>(null)
 
   const { data: policies = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['insurance'],
@@ -76,7 +77,17 @@ export default function InsurancePage() {
 
   const confirmDeductionMutation = useMutation({
     mutationFn: (id: string) => api.post(`/insurance/${id}/confirm-deduction`).then((r) => r.data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['insurance'] }); qc.invalidateQueries({ queryKey: ['dashboard'] }) },
+    onSuccess: (_, id) => {
+      qc.invalidateQueries({ queryKey: ['insurance'] })
+      qc.invalidateQueries({ queryKey: ['dashboard'] })
+      qc.invalidateQueries({ queryKey: ['insurance-payments', id] })
+    },
+  })
+
+  const { data: policyHistory = [] } = useQuery({
+    queryKey: ['insurance-payments', historyPolicyId],
+    queryFn: () => api.get<InsurancePayment[]>(`/insurance/${historyPolicyId}/payments`).then((r) => r.data),
+    enabled: !!historyPolicyId,
   })
 
   const activePolicies = policies.filter((p) => p.isActive)
@@ -198,15 +209,42 @@ export default function InsurancePage() {
                 <p className="text-xs text-gray-400 mt-2">Next payment: {p.nextPaymentDate}</p>
               )}
               {p.notes && <p className="text-xs text-gray-400 mt-1 truncate">{p.notes}</p>}
-              {p.isActive && (
+              <div className="mt-3 flex items-center gap-2 flex-wrap">
+                {p.isActive && (
+                  <button
+                    onClick={() => confirmDeductionMutation.mutate(p.id)}
+                    disabled={confirmDeductionMutation.isPending}
+                    className="flex items-center gap-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-50"
+                  >
+                    <CheckCircle className="w-3.5 h-3.5" />
+                    {confirmDeductionMutation.isPending ? 'Confirming…' : 'Confirm premium paid'}
+                  </button>
+                )}
                 <button
-                  onClick={() => confirmDeductionMutation.mutate(p.id)}
-                  disabled={confirmDeductionMutation.isPending}
-                  className="mt-3 flex items-center gap-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-50"
+                  onClick={() => setHistoryPolicyId(historyPolicyId === p.id ? null : p.id)}
+                  className="flex items-center gap-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded-lg px-2 py-1.5 text-xs font-medium ml-auto"
                 >
-                  <CheckCircle className="w-3.5 h-3.5" />
-                  {confirmDeductionMutation.isPending ? 'Confirming…' : 'Confirm premium paid'}
+                  <History className="w-3.5 h-3.5" />
+                  History
+                  {historyPolicyId === p.id ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                 </button>
+              </div>
+
+              {historyPolicyId === p.id && (
+                <div className="mt-3 border-t border-gray-50 pt-3">
+                  {policyHistory.length === 0 ? (
+                    <p className="text-xs text-gray-400 text-center py-2">No premiums confirmed yet</p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {policyHistory.map((pay) => (
+                        <div key={pay.id} className="flex items-center justify-between text-xs">
+                          <span className="text-gray-500">{pay.date}</span>
+                          <span className="font-medium text-gray-700">{kes(pay.amount)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           ))

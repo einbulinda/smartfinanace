@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Debt } from './entities/debt.entity';
+import { DebtPayment, DebtPaymentType } from './entities/debt-payment.entity';
 import { CreateDebtDto } from './dto/create-debt.dto';
 import { UpdateDebtDto } from './dto/update-debt.dto';
 import { MakePaymentDto } from './dto/make-payment.dto';
@@ -13,6 +14,8 @@ export class DebtsService {
   constructor(
     @InjectRepository(Debt)
     private readonly repo: Repository<Debt>,
+    @InjectRepository(DebtPayment)
+    private readonly paymentRepo: Repository<DebtPayment>,
     private readonly transactionsService: TransactionsService,
   ) {}
 
@@ -52,28 +55,35 @@ export class DebtsService {
 
   async makePayment(userId: string, id: string, dto: MakePaymentDto): Promise<Debt> {
     const debt = await this.findOne(userId, id);
+    const date = new Date().toISOString().split('T')[0];
+    const type = dto.paymentType ?? DebtPaymentType.MANUAL;
 
     debt.currentBalance = Math.max(0, debt.currentBalance - dto.amount);
     if (debt.currentBalance === 0) debt.isPaidOff = true;
 
-    // Record as an expense so it appears in transaction history and summary
     await this.transactionsService.create(userId, {
       type: TransactionType.EXPENSE,
       amount: dto.amount,
       category: 'debt_repayment',
       description: `Payment: ${debt.name}`,
-      date: new Date().toISOString().split('T')[0],
+      date,
       ...(dto.accountId ? { accountId: dto.accountId } : {}),
     });
+
+    await this.paymentRepo.save({ debtId: id, userId, amount: dto.amount, date, type });
 
     return this.repo.save(debt);
   }
 
   async confirmDeduction(userId: string, id: string): Promise<Debt> {
     const debt = await this.findOne(userId, id);
+    const date = new Date().toISOString().split('T')[0];
     const amount = debt.minimumPayment
       ? Math.min(Number(debt.minimumPayment), Number(debt.currentBalance))
       : Number(debt.currentBalance);
+    const type = debt.deductionMethod === 'AUTO_DEBIT'
+      ? DebtPaymentType.AUTO_DEBIT
+      : DebtPaymentType.SALARY_DEDUCTION;
 
     debt.currentBalance = Math.max(0, Number(debt.currentBalance) - amount);
     if (debt.currentBalance === 0) debt.isPaidOff = true;
@@ -83,10 +93,20 @@ export class DebtsService {
       amount,
       category: 'debt_repayment',
       description: `Salary deduction: ${debt.name}`,
-      date: new Date().toISOString().split('T')[0],
+      date,
     });
 
+    await this.paymentRepo.save({ debtId: id, userId, amount, date, type });
+
     return this.repo.save(debt);
+  }
+
+  async getPayments(userId: string, debtId: string): Promise<DebtPayment[]> {
+    await this.findOne(userId, debtId); // ownership check
+    return this.paymentRepo.find({
+      where: { debtId },
+      order: { date: 'DESC', createdAt: 'DESC' },
+    });
   }
 
   async getUpcomingPayments(userId: string): Promise<Debt[]> {

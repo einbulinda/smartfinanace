@@ -127,6 +127,23 @@ export interface CreateProjectRequest {
 export type InterestType = 'REDUCING_BALANCE' | 'FLAT_RATE' | 'DAILY_ACCRUAL' | 'NONE'
 export type DeductionMethod = 'MANUAL' | 'SALARY_DEDUCTION' | 'STANDING_ORDER' | 'AUTO_DEBIT'
 
+export interface DebtPayment {
+  id: string
+  debtId: string
+  amount: number
+  date: string
+  type: 'MANUAL' | 'SALARY_DEDUCTION' | 'AUTO_DEBIT' | 'EXTRA'
+  createdAt: string
+}
+
+export interface InsurancePayment {
+  id: string
+  policyId: string
+  amount: number
+  date: string
+  createdAt: string
+}
+
 export interface Debt {
   id: string
   name: string
