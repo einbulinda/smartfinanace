@@ -259,6 +259,7 @@ export interface RecordRepaymentRequest {
 
 export interface BudgetItemInput {
   category: string
+  description?: string
   allocatedAmount: number
   isPreDeduction?: boolean
 }
@@ -266,6 +267,7 @@ export interface BudgetItemInput {
 export interface BudgetItem {
   id: string
   category: string
+  description: string | null
   allocatedAmount: number
   isPreDeduction: boolean
   budgetId: string
@@ -282,6 +284,7 @@ export interface Budget {
 
 export interface BudgetVsActualItem {
   category: string
+  description: string | null
   allocated: number
   actual: number
   variance: number

@@ -45,6 +45,7 @@ export class BudgetsService {
 
     return this.upsert(userId, targetMonth, { items: source.items.map((i) => ({
       category: i.category,
+      description: i.description ?? undefined,
       allocatedAmount: i.allocatedAmount,
       isPreDeduction: i.isPreDeduction,
     })) });
@@ -69,6 +70,7 @@ export class BudgetsService {
       const actual = actualByCategory.get(item.category) ?? 0;
       return {
         category: item.category,
+        description: item.description ?? null,
         allocated: item.allocatedAmount,
         actual,
         variance: item.allocatedAmount - actual,
@@ -79,7 +81,7 @@ export class BudgetsService {
     // Include categories with spend but no budget allocation
     for (const [category, actual] of actualByCategory) {
       if (!items.find((i) => i.category === category)) {
-        items.push({ category, allocated: 0, actual, variance: -actual, isPreDeduction: false });
+        items.push({ category, description: null, allocated: 0, actual, variance: -actual, isPreDeduction: false });
       }
     }
 

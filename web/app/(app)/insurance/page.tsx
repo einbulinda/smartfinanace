@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2, X, Pencil } from 'lucide-react'
+import { Plus, Trash2, X, Pencil, CheckCircle } from 'lucide-react'
 import { api } from '@/lib/api'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { ErrorState } from '@/components/ErrorState'
@@ -72,6 +72,11 @@ export default function InsurancePage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/insurance/${id}`),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['insurance'] }); qc.invalidateQueries({ queryKey: ['dashboard'] }); setPendingDeleteId(null) },
+  })
+
+  const confirmDeductionMutation = useMutation({
+    mutationFn: (id: string) => api.post(`/insurance/${id}/confirm-deduction`).then((r) => r.data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['insurance'] }); qc.invalidateQueries({ queryKey: ['dashboard'] }) },
   })
 
   const activePolicies = policies.filter((p) => p.isActive)
@@ -193,6 +198,16 @@ export default function InsurancePage() {
                 <p className="text-xs text-gray-400 mt-2">Next payment: {p.nextPaymentDate}</p>
               )}
               {p.notes && <p className="text-xs text-gray-400 mt-1 truncate">{p.notes}</p>}
+              {p.isActive && (
+                <button
+                  onClick={() => confirmDeductionMutation.mutate(p.id)}
+                  disabled={confirmDeductionMutation.isPending}
+                  className="mt-3 flex items-center gap-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-50"
+                >
+                  <CheckCircle className="w-3.5 h-3.5" />
+                  {confirmDeductionMutation.isPending ? 'Confirming…' : 'Confirm premium paid'}
+                </button>
+              )}
             </div>
           ))
         )}

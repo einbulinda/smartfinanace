@@ -3,9 +3,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { InsuranceController } from './insurance.controller';
 import { InsuranceService } from './insurance.service';
 import { Insurance } from './entities/insurance.entity';
+import { TransactionsModule } from '../transactions/transactions.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Insurance])],
+  imports: [TypeOrmModule.forFeature([Insurance]), TransactionsModule],
   controllers: [InsuranceController],
   providers: [InsuranceService],
   exports: [InsuranceService],

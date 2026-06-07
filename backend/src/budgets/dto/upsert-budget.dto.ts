@@ -6,6 +6,10 @@ export class BudgetItemDto {
   @IsNotEmpty()
   category: string;
 
+  @IsString()
+  @IsOptional()
+  description?: string;
+
   @IsNumber()
   @Min(0)
   allocatedAmount: number;

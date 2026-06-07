@@ -69,6 +69,26 @@ export class DebtsService {
     return this.repo.save(debt);
   }
 
+  async confirmDeduction(userId: string, id: string): Promise<Debt> {
+    const debt = await this.findOne(userId, id);
+    const amount = debt.minimumPayment
+      ? Math.min(Number(debt.minimumPayment), Number(debt.currentBalance))
+      : Number(debt.currentBalance);
+
+    debt.currentBalance = Math.max(0, Number(debt.currentBalance) - amount);
+    if (debt.currentBalance === 0) debt.isPaidOff = true;
+
+    await this.transactionsService.create(userId, {
+      type: TransactionType.EXPENSE,
+      amount,
+      category: 'debt_repayment',
+      description: `Salary deduction: ${debt.name}`,
+      date: new Date().toISOString().split('T')[0],
+    });
+
+    return this.repo.save(debt);
+  }
+
   async getUpcomingPayments(userId: string): Promise<Debt[]> {
     const today = new Date().getDate();
     const next7 = Array.from({ length: 7 }, (_, i) => ((today + i - 1) % 31) + 1);

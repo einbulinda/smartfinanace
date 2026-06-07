@@ -19,6 +19,9 @@ export class BudgetItem {
   @Column()
   category: string;
 
+  @Column({ type: 'varchar', nullable: true })
+  description: string | null;
+
   @Column({ type: 'decimal', precision: 14, scale: 2, transformer: toFloat })
   allocatedAmount: number;
 

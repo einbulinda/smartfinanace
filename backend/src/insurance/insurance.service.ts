@@ -4,12 +4,15 @@ import { Repository } from 'typeorm';
 import { Insurance, PremiumFrequency } from './entities/insurance.entity';
 import { CreateInsuranceDto } from './dto/create-insurance.dto';
 import { UpdateInsuranceDto } from './dto/update-insurance.dto';
+import { TransactionsService } from '../transactions/transactions.service';
+import { TransactionType } from '../transactions/entities/transaction.entity';
 
 @Injectable()
 export class InsuranceService {
   constructor(
     @InjectRepository(Insurance)
     private readonly repo: Repository<Insurance>,
+    private readonly transactionsService: TransactionsService,
   ) {}
 
   async create(userId: string, dto: CreateInsuranceDto): Promise<Insurance> {
@@ -39,6 +42,30 @@ export class InsuranceService {
   async remove(userId: string, id: string): Promise<void> {
     const policy = await this.findOne(userId, id);
     await this.repo.remove(policy);
+  }
+
+  async confirmDeduction(userId: string, id: string): Promise<Insurance> {
+    const policy = await this.findOne(userId, id);
+    const today = new Date().toISOString().split('T')[0];
+
+    await this.transactionsService.create(userId, {
+      type: TransactionType.EXPENSE,
+      amount: policy.premiumAmount,
+      category: 'insurance',
+      description: `Premium: ${policy.provider}`,
+      date: today,
+    });
+
+    // Advance nextPaymentDate by the frequency period
+    if (policy.nextPaymentDate) {
+      const next = new Date(policy.nextPaymentDate);
+      if (policy.premiumFrequency === PremiumFrequency.MONTHLY) next.setMonth(next.getMonth() + 1);
+      else if (policy.premiumFrequency === PremiumFrequency.QUARTERLY) next.setMonth(next.getMonth() + 3);
+      else next.setFullYear(next.getFullYear() + 1);
+      policy.nextPaymentDate = next.toISOString().split('T')[0];
+    }
+
+    return this.repo.save(policy);
   }
 
   async getMonthlyPremiumTotal(userId: string): Promise<number> {

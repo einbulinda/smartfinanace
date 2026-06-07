@@ -56,6 +56,23 @@ function pct(n: number | string) {
   return Number(n).toFixed(1) + '%'
 }
 
+function monthsToLabel(months: number): string {
+  if (months <= 0) return 'Paid off'
+  if (months < 1) return 'Less than 1 month'
+  const y = Math.floor(months / 12)
+  const m = Math.round(months % 12)
+  if (y === 0) return `${m} mo`
+  if (m === 0) return `${y} yr`
+  return `${y} yr ${m} mo`
+}
+
+function debtFreeDate(months: number): string {
+  if (months <= 0) return 'Now'
+  const d = new Date()
+  d.setMonth(d.getMonth() + Math.round(months))
+  return d.toLocaleDateString('en-KE', { month: 'short', year: 'numeric' })
+}
+
 const today = new Date().toISOString().split('T')[0]
 
 type FormState = CreateDebtRequest & { currentBalanceStr: string }
@@ -105,6 +122,9 @@ export default function DebtsPage() {
   const [paymentAmount, setPaymentAmount] = useState('')
   const [paymentAccountId, setPaymentAccountId] = useState('')
   const [paymentError, setPaymentError] = useState('')
+  const [extraPaymentDebt, setExtraPaymentDebt] = useState<Debt | null>(null)
+  const [extraAmount, setExtraAmount] = useState('')
+  const [extraError, setExtraError] = useState('')
   const [showPaidOff, setShowPaidOff] = useState(false)
 
   const { data: debts = [], isLoading, isError, refetch } = useQuery({
@@ -144,6 +164,21 @@ export default function DebtsPage() {
       setPaymentDebt(null); setPaymentAmount(''); setPaymentAccountId(''); setPaymentError('')
     },
     onError: () => setPaymentError('Payment failed. Please try again.'),
+  })
+
+  const confirmDeductionMutation = useMutation({
+    mutationFn: (id: string) => api.post<Debt>(`/debts/${id}/confirm-deduction`).then((r) => r.data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['debts'] }); qc.invalidateQueries({ queryKey: ['dashboard'] }) },
+  })
+
+  const extraPaymentMutation = useMutation({
+    mutationFn: ({ id, amount }: { id: string; amount: number }) =>
+      api.post<Debt>(`/debts/${id}/payment`, { amount }).then((r) => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['debts'] }); qc.invalidateQueries({ queryKey: ['dashboard'] })
+      setExtraPaymentDebt(null); setExtraAmount(''); setExtraError('')
+    },
+    onError: () => setExtraError('Extra payment failed. Please try again.'),
   })
 
   const activeDebts = debts.filter((d) => !d.isPaidOff)
@@ -205,18 +240,36 @@ export default function DebtsPage() {
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-2 gap-3 mb-5">
-        <div className="bg-red-50 rounded-xl p-4">
-          <p className="text-xs font-semibold uppercase tracking-wider text-red-500">Total Outstanding</p>
-          <p className="text-2xl font-bold text-red-700 mt-1">{kes(totalDebt)}</p>
-        </div>
-        {salaryDeductionTotal > 0 && (
-          <div className="bg-blue-50 rounded-xl p-4">
-            <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">Salary Deductions/mo</p>
-            <p className="text-xl font-bold text-blue-800 mt-1">{kes(salaryDeductionTotal)}</p>
+      {(() => {
+        const debtFreeMonths = (() => {
+          if (activeDebts.length === 0) return null
+          const debtsWithPayments = activeDebts.filter((d) => d.minimumPayment && Number(d.minimumPayment) > 0)
+          if (debtsWithPayments.length === 0) return null
+          return Math.max(...debtsWithPayments.map((d) => Number(d.currentBalance) / Number(d.minimumPayment)))
+        })()
+        return (
+          <div className="grid grid-cols-2 gap-3 mb-5">
+            <div className="bg-red-50 rounded-xl p-4">
+              <p className="text-xs font-semibold uppercase tracking-wider text-red-500">Total Outstanding</p>
+              <p className="text-2xl font-bold text-red-700 mt-1">{kes(totalDebt)}</p>
+              {debtFreeMonths !== null && (
+                <p className="text-xs text-red-400 mt-1">Debt-free by {debtFreeDate(debtFreeMonths)}</p>
+              )}
+            </div>
+            {salaryDeductionTotal > 0 ? (
+              <div className="bg-blue-50 rounded-xl p-4">
+                <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">Salary Deductions/mo</p>
+                <p className="text-xl font-bold text-blue-800 mt-1">{kes(salaryDeductionTotal)}</p>
+              </div>
+            ) : debtFreeMonths !== null ? (
+              <div className="bg-gray-50 rounded-xl p-4">
+                <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Debt-free in</p>
+                <p className="text-xl font-bold text-gray-700 mt-1">{monthsToLabel(debtFreeMonths)}</p>
+              </div>
+            ) : null}
           </div>
-        )}
-      </div>
+        )
+      })()}
 
       {/* Debt list */}
       <div className="space-y-3">
@@ -254,7 +307,7 @@ export default function DebtsPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  {debt.deductionMethod === 'MANUAL' || debt.deductionMethod === 'STANDING_ORDER' ? (
+                  {(debt.deductionMethod === 'MANUAL' || debt.deductionMethod === 'STANDING_ORDER') && (
                     <button
                       onClick={() => { setPaymentDebt(debt); setPaymentAmount(''); setPaymentAccountId(''); setPaymentError('') }}
                       className="flex items-center gap-1.5 bg-green-50 text-green-700 hover:bg-green-100 transition-colors rounded-lg px-3 py-1.5 text-xs font-medium"
@@ -262,7 +315,7 @@ export default function DebtsPage() {
                       <Banknote className="w-3.5 h-3.5" />
                       Pay
                     </button>
-                  ) : null}
+                  )}
                   <button onClick={() => handleEdit(debt)} className="text-gray-300 hover:text-blue-400 transition-colors p-1" aria-label="Edit">
                     <Pencil className="w-3.5 h-3.5" />
                   </button>
@@ -271,6 +324,27 @@ export default function DebtsPage() {
                   </button>
                 </div>
               </div>
+
+              {/* Auto-deduction action row */}
+              {(debt.deductionMethod === 'SALARY_DEDUCTION' || debt.deductionMethod === 'AUTO_DEBIT') && (
+                <div className="mt-3 flex items-center gap-2 flex-wrap">
+                  <button
+                    onClick={() => confirmDeductionMutation.mutate(debt.id)}
+                    disabled={confirmDeductionMutation.isPending}
+                    className="flex items-center gap-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-50"
+                  >
+                    <Banknote className="w-3.5 h-3.5" />
+                    {confirmDeductionMutation.isPending ? 'Confirming…' : 'Confirm deduction'}
+                  </button>
+                  <button
+                    onClick={() => { setExtraPaymentDebt(debt); setExtraAmount(''); setExtraError('') }}
+                    className="flex items-center gap-1.5 bg-green-50 text-green-700 hover:bg-green-100 transition-colors rounded-lg px-3 py-1.5 text-xs font-medium"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Extra payment
+                  </button>
+                </div>
+              )}
 
               <div className="mt-3 grid grid-cols-3 gap-x-4 text-sm">
                 <div>
@@ -289,18 +363,34 @@ export default function DebtsPage() {
                 )}
               </div>
 
-              {/* Progress bar */}
-              <div className="mt-3">
-                <div className="bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                  <div
-                    className="bg-red-400 h-1.5 rounded-full transition-all"
-                    style={{ width: `${Math.min(100, (Number(debt.currentBalance) / Number(debt.originalAmount)) * 100)}%` }}
-                  />
-                </div>
-                <p className="text-xs text-gray-400 mt-1">
-                  {Math.round((1 - Number(debt.currentBalance) / Number(debt.originalAmount)) * 100)}% paid off
-                </p>
-              </div>
+              {/* Progress bar + time to clear */}
+              {(() => {
+                const balance = Number(debt.currentBalance)
+                const original = Number(debt.originalAmount)
+                const paidPct = Math.round((1 - balance / original) * 100)
+                const monthsLeft = debt.minimumPayment && Number(debt.minimumPayment) > 0
+                  ? balance / Number(debt.minimumPayment)
+                  : null
+                return (
+                  <div className="mt-3">
+                    <div className="bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                      <div
+                        className="bg-red-400 h-1.5 rounded-full transition-all"
+                        style={{ width: `${Math.min(100, (balance / original) * 100)}%` }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between mt-1">
+                      <p className="text-xs text-gray-400">{paidPct}% paid off</p>
+                      {monthsLeft !== null && (
+                        <p className="text-xs text-gray-400">
+                          Clear by <span className="font-medium text-gray-600">{debtFreeDate(monthsLeft)}</span>
+                          {' '}({monthsToLabel(monthsLeft)})
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
           ))
         )}
@@ -401,6 +491,42 @@ export default function DebtsPage() {
               <button type="submit" disabled={paymentMutation.isPending || !paymentAmount}
                 className="w-full rounded-lg bg-green-700 text-white py-2.5 text-sm font-medium hover:bg-green-800 disabled:opacity-50 transition-colors">
                 {paymentMutation.isPending ? 'Processing…' : 'Confirm Payment'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Extra payment modal (auto-deducted debts) */}
+      {extraPaymentDebt && (
+        <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <div>
+                <h3 className="font-semibold text-gray-900">Extra Payment</h3>
+                <p className="text-xs text-gray-400 mt-0.5 truncate max-w-56">{extraPaymentDebt.name}</p>
+              </div>
+              <button onClick={() => setExtraPaymentDebt(null)}><X className="w-5 h-5 text-gray-400" /></button>
+            </div>
+            <form onSubmit={(e) => { e.preventDefault(); const amt = parseFloat(extraAmount); if (!amt || amt <= 0) return; setExtraError(''); extraPaymentMutation.mutate({ id: extraPaymentDebt.id, amount: amt }) }}
+              className="p-5 space-y-4">
+              <div className="bg-gray-50 rounded-lg px-4 py-3 flex justify-between text-sm">
+                <span className="text-gray-500">Current balance</span>
+                <span className="font-semibold text-gray-900">{kes(extraPaymentDebt.currentBalance)}</span>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Additional amount (KES)</label>
+                <input
+                  type="number" min="0.01" step="0.01" max={Number(extraPaymentDebt.currentBalance)}
+                  value={extraAmount} onChange={(e) => setExtraAmount(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-transparent"
+                  placeholder="0.00" autoFocus required
+                />
+              </div>
+              {extraError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{extraError}</p>}
+              <button type="submit" disabled={extraPaymentMutation.isPending || !extraAmount}
+                className="w-full rounded-lg bg-green-700 text-white py-2.5 text-sm font-medium hover:bg-green-800 disabled:opacity-50 transition-colors">
+                {extraPaymentMutation.isPending ? 'Processing…' : 'Confirm Extra Payment'}
               </button>
             </form>
           </div>

@@ -81,7 +81,7 @@ export default function BudgetsPage() {
 
   useEffect(() => {
     if (budget?.items) {
-      setEditItems(budget.items.map((i) => ({ category: i.category, allocatedAmount: i.allocatedAmount, isPreDeduction: i.isPreDeduction })))
+      setEditItems(budget.items.map((i) => ({ category: i.category, description: i.description ?? '', allocatedAmount: i.allocatedAmount, isPreDeduction: i.isPreDeduction })))
     } else {
       setEditItems([])
     }
@@ -110,7 +110,7 @@ export default function BudgetsPage() {
   })
 
   function addItem() {
-    setEditItems((prev) => [...prev, { category: '', allocatedAmount: 0, isPreDeduction: false }])
+    setEditItems((prev) => [...prev, { category: '', description: '', allocatedAmount: 0, isPreDeduction: false }])
   }
 
   function removeItem(i: number) {
@@ -204,14 +204,18 @@ export default function BudgetsPage() {
                   </div>
                   <div className="divide-y divide-gray-50">
                     {editItems.map((item, i) => (
-                      <div key={i} className="px-4 py-3 flex items-center gap-3">
-                        <div className="flex-1 min-w-0">
+                      <div key={i} className="px-4 py-3 flex items-start gap-3">
+                        <div className="flex-1 min-w-0 space-y-1.5">
                           <select value={item.category}
                             onChange={(e) => updateItem(i, 'category', e.target.value)}
-                            className="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-green-600 mb-1.5">
+                            className="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-green-600">
                             <option value="">Select category</option>
                             {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
                           </select>
+                          <input type="text" value={item.description ?? ''}
+                            onChange={(e) => updateItem(i, 'description', e.target.value)}
+                            className="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-green-600"
+                            placeholder="Description (optional)" />
                           <div className="flex items-center gap-2">
                             <input type="number" min="0" step="100" value={item.allocatedAmount || ''}
                               onChange={(e) => updateItem(i, 'allocatedAmount', parseFloat(e.target.value) || 0)}
@@ -225,7 +229,7 @@ export default function BudgetsPage() {
                             </label>
                           </div>
                         </div>
-                        <button onClick={() => removeItem(i)} className="text-gray-300 hover:text-red-400 transition-colors p-1 shrink-0">
+                        <button onClick={() => removeItem(i)} className="text-gray-300 hover:text-red-400 transition-colors p-1 shrink-0 mt-1">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
@@ -278,8 +282,11 @@ export default function BudgetsPage() {
                           <p className="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-gray-400 bg-gray-50">Pre-deductions</p>
                           {editItems.filter((i) => i.isPreDeduction).map((item, i) => (
                             <div key={i} className="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0">
-                              <p className="text-sm text-gray-700">{item.category}</p>
-                              <p className="text-sm font-semibold text-gray-900">{kes(item.allocatedAmount)}</p>
+                              <div>
+                                <p className="text-sm text-gray-700">{item.category}</p>
+                                {item.description && <p className="text-xs text-gray-400 mt-0.5">{item.description}</p>}
+                              </div>
+                              <p className="text-sm font-semibold text-gray-900 shrink-0 ml-4">{kes(item.allocatedAmount)}</p>
                             </div>
                           ))}
                         </div>
@@ -287,8 +294,11 @@ export default function BudgetsPage() {
                       {/* Post-deduction section */}
                       {editItems.filter((i) => !i.isPreDeduction).map((item, i) => (
                         <div key={i} className="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0">
-                          <p className="text-sm text-gray-700">{item.category}</p>
-                          <p className="text-sm font-semibold text-gray-900">{kes(item.allocatedAmount)}</p>
+                          <div>
+                            <p className="text-sm text-gray-700">{item.category}</p>
+                            {item.description && <p className="text-xs text-gray-400 mt-0.5">{item.description}</p>}
+                          </div>
+                          <p className="text-sm font-semibold text-gray-900 shrink-0 ml-4">{kes(item.allocatedAmount)}</p>
                         </div>
                       ))}
                       <div className="flex gap-2 px-4 py-3 border-t border-gray-100">
@@ -365,8 +375,11 @@ export default function BudgetsPage() {
                     return (
                       <div key={i} className="px-4 py-3 border-b border-gray-50 last:border-0">
                         <div className="flex items-center justify-between mb-1.5">
-                          <p className="text-sm text-gray-700">{item.category}</p>
-                          <div className="text-right">
+                          <div>
+                            <p className="text-sm text-gray-700">{item.category}</p>
+                            {item.description && <p className="text-xs text-gray-400">{item.description}</p>}
+                          </div>
+                          <div className="text-right ml-4">
                             <span className={`text-sm font-semibold ${over ? 'text-red-600' : 'text-gray-900'}`}>
                               {kes(item.actual)}
                             </span>
