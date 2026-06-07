@@ -22,6 +22,7 @@ jobs:
             set -e
             cd /var/www/smartfinanace
             git checkout -- .
+            find .git -name "*.lock" -delete 2>/dev/null || true
             git fetch --force --prune origin
             git reset --hard origin/main
             cd web
